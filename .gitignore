@@ -1,0 +1,8 @@
+# DS-1000 dataset
+src/dataset/ds1000_data
+
+# venv
+.venv
+
+# bytecode
+__pycache__/
