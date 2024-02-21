@@ -6,10 +6,11 @@ readme = "README.md"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
+gdown = "^5.1.0"
 langchain = "^0.1.7"
 langchain-openai = "^0.0.6"
 python = "~3.10"
-gdown = "^5.1.0"
+pyzstd = "^0.15.9"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
