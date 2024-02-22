@@ -13,56 +13,9 @@ from pathlib import Path
 from subprocess import PIPE, Popen
 from typing import List, Union
 
+from src.utils import setup_test_env
 
-def check_cpu_count(num_procs: int):
-    import warnings
-    from multiprocessing import cpu_count
-
-    if 2 * num_procs > cpu_count():
-        warnings.warn(
-            f"You have {cpu_count()} cpus but are using {num_procs} processes to run the evaluation!",
-            Warning,
-        )
-
-
-def check_version():
-    import pathlib
-    import platform
-
-    import DateTime
-    import gensim
-    import matplotlib
-    import numpy
-    import openai
-    import pandas
-    import pandas_datareader
-    import scipy
-    import seaborn
-    import sklearn
-    import statsmodels
-    import tensorflow
-    import torch
-    import torchvision
-    import tqdm
-    import transformers
-    import xgboost
-
-    assert platform.python_version() == "3.7.10"
-    assert gensim.__version__ == "4.2.0"
-    assert matplotlib.__version__ == "3.5.2"
-    assert numpy.__version__ == "1.21.6"
-    assert pandas.__version__ == "1.3.5"
-    assert pandas_datareader.__version__ == "0.10.0"
-    assert sklearn.__version__ == "1.0.2"
-    assert scipy.__version__ == "1.7.3"
-    assert seaborn.__version__ == "0.11.2"
-    assert statsmodels.__version__ == "0.13.2"
-    assert tensorflow.__version__ == "2.10.0"
-    assert "1.12.1" in torch.__version__
-    assert "0.13.1" in torchvision.__version__
-    assert tqdm.__version__ == "4.64.1"
-    assert transformers.__version__ == "4.22.1"
-    assert xgboost.__version__ == "1.6.2"
+setup_test_env()
 
 
 class Command(object):
@@ -76,17 +29,13 @@ class Command(object):
 
     def run(self, timeout):
         def target():
-            # Check if in Windows https://stackoverflow.com/questions/1325581/how-do-i-check-if-im-running-on-windows-in-python
-            if os.name == "nt":
-                self.process = Popen(self.cmd, shell=True, stdout=PIPE, stderr=PIPE)
-            else:
-                self.process = Popen(
-                    self.cmd,
-                    shell=True,
-                    stdout=PIPE,
-                    stderr=PIPE,
-                    preexec_fn=os.setsid,
-                )
+            self.process = Popen(
+                self.cmd,
+                shell=True,
+                stdout=PIPE,
+                stderr=PIPE,
+                preexec_fn=os.setsid,
+            )
             stdout, stderr = self.process.communicate()
             self.stdout = stdout
             self.stderr = stderr
@@ -96,11 +45,7 @@ class Command(object):
 
         thread.join(timeout)
         if thread.is_alive():
-            # Check if in Windows https://stackoverflow.com/questions/1325581/how-do-i-check-if-im-running-on-windows-in-python
-            if os.name == "nt":
-                Popen("TASKKILL /F /PID {pid} /T".format(pid=self.process.pid))
-            else:
-                os.killpg(self.process.pid, signal.SIGTERM)
+            os.killpg(self.process.pid, signal.SIGTERM)
             thread.join()
         return (
             self.process.returncode,
@@ -281,7 +226,9 @@ class DS1000Problem:
             test_cnt = max(1, int(self["test_case_cnt"]))
             for i in range(1, test_cnt + 1):
                 # notice this command, e.g., you may need to replace `python` with `python3`
-                cmd_text = f"python program.py --test_case {i}"
+                cmd_text = "{} program.py --test_case {}".format(
+                    os.getenv("SELFDEBUG_PYTHON"), i
+                )
                 time_limit = 60  # should not change the official time_limit
                 cmd = Command(
                     cmd_text,

@@ -5,6 +5,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import tarfile
 
 import pyzstd
@@ -22,7 +23,7 @@ def syntax_check(code: str) -> dict:
 def setup_test_env():
     if platform.system() != "Linux":
         raise OSError("This script only supports Linux.")
-    else:
+    elif not os.path.exists(os.path.expanduser("~/.self-debug")):
         # Download Python binary
         url = "https://github.com/indygreg/python-build-standalone/releases/download/20200418/cpython-3.7.7-x86_64-unknown-linux-gnu-pgo-20200418T2226.tar.zst"
         response = requests.get(url, stream=True)
@@ -49,16 +50,27 @@ def setup_test_env():
         os.remove(destination)
         os.remove(decompressed_file)
 
-        # Set the environment variable
-        python_metadata = json.load(
-            open(os.path.expanduser("~/.self-debug/python/PYTHON.json"))
-        )
-        os.environ["SELFDEBUG_PYTHON"] = os.path.join(
-            os.path.expanduser("~/.self-debug/python"),
-            python_metadata["python_exe"],
-        )
+    # Set the Python interpreter path
+    python_metadata = json.load(
+        open(os.path.expanduser("~/.self-debug/python/PYTHON.json"))
+    )
+    python_interpreter = os.path.join(
+        os.path.expanduser("~/.self-debug/python"), python_metadata["python_exe"]
+    )
+    process = subprocess.Popen(
+        [
+            python_interpreter,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            "src/dataset/ds1000_requirements.txt",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    _, stderr = process.communicate()
+    print(stderr.decode())
 
-
-if __name__ == "__main__":
-    setup_test_env()
-    print("Setup complete.")
+    # Export the Python interpreter path
+    os.environ["SELFDEBUG_PYTHON"] = python_interpreter

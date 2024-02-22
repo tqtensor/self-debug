@@ -6,3 +6,6 @@ src/dataset/ds1000_data
 
 # bytecode
 __pycache__/
+
+# VSCode
+.vscode/
