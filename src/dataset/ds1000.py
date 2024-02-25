@@ -227,7 +227,13 @@ class DS1000Problem:
             for i in range(1, test_cnt + 1):
                 # notice this command, e.g., you may need to replace `python` with `python3`
                 cmd_text = "{} program.py --test_case {}".format(
-                    os.getenv("SELFDEBUG_PYTHON"), i
+                    os.path.join(
+                        os.path.dirname(
+                            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        ),
+                        ".venv/bin/python",
+                    ),
+                    i,
                 )
                 time_limit = 60  # should not change the official time_limit
                 cmd = Command(

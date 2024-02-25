@@ -20,12 +20,20 @@ def syntax_check(code: str) -> dict:
         return {"status": "error", "line": e.lineno, "message": e.msg}
 
 
+def _subprocess_run(command: list, cwd: str = None) -> None:
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd
+    )
+    _, stderr = process.communicate()
+    print(stderr.decode())
+
+
 def setup_test_env():
     if platform.system() != "Linux":
         raise OSError("This script only supports Linux.")
     elif not os.path.exists(os.path.expanduser("~/.self-debug")):
         # Download Python binary
-        url = "https://github.com/indygreg/python-build-standalone/releases/download/20200418/cpython-3.7.7-x86_64-unknown-linux-gnu-pgo-20200418T2226.tar.zst"
+        url = "https://github.com/indygreg/python-build-standalone/releases/download/20210506/cpython-3.8.10-x86_64-unknown-linux-gnu-pgo-20210506T0943.tar.zst"
         response = requests.get(url, stream=True)
         response.raise_for_status()
 
@@ -57,20 +65,15 @@ def setup_test_env():
     python_interpreter = os.path.join(
         os.path.expanduser("~/.self-debug/python"), python_metadata["python_exe"]
     )
-    process = subprocess.Popen(
-        [
-            python_interpreter,
-            "-m",
-            "pip",
-            "install",
-            "-r",
-            "src/dataset/ds1000_requirements.txt",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    _, stderr = process.communicate()
-    print(stderr.decode())
 
-    # Export the Python interpreter path
-    os.environ["SELFDEBUG_PYTHON"] = python_interpreter
+    # Install venv
+    _subprocess_run([python_interpreter, "-m", "venv", ".venv"])
+
+    # Install dependencies
+    _subprocess_run([".venv/bin/pip", "install", "-U", "pip"])
+    _subprocess_run([".venv/bin/pip", "install", "-U", "poetry"])
+    _subprocess_run([".venv/bin/python", "-m", "poetry", "install", "--no-root"])
+
+
+if __name__ == "__main__":
+    setup_test_env()
