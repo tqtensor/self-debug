@@ -28,12 +28,13 @@ class InitialGenerator:
             The problem is: {problem_description}.
 
             Please solve the problem by defining a function f that takes the input and returns the output.
-            Then assign the result of calling the function to the variable x.
+            Then identify the variable name that the question asks you to return the result via. It could be x, or result.
+            Then assign the result of calling the function to that variable.
             For example:
             ```python
             def f(...):
                 # your solution here
-            x = f(...)
+            identified_variable = f(...)
             ```"""
             prompt = ChatPromptTemplate.from_messages(
                 [("system", system), ("human", human)]
