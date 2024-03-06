@@ -1,13 +1,15 @@
+from dotenv import load_dotenv
+
+load_dotenv(".env")
+
+
 import os
 import time
 
-from dotenv import load_dotenv
 from tqdm.auto import tqdm
 
 from src.dataset import Dataset
 from src.initial_generator import InitialGenerator
-
-load_dotenv()
 
 dataset = Dataset(dataset="ds-1000").dataset
 
