@@ -9,3 +9,6 @@ __pycache__/
 
 # VSCode
 .vscode/
+
+# generated files
+src/dataset/generated_code
