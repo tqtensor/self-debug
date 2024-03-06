@@ -12,3 +12,6 @@ __pycache__/
 
 # generated files
 src/dataset/generated_code
+
+# environment file
+.env
