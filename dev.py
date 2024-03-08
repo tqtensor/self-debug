@@ -3,8 +3,10 @@ from dotenv import load_dotenv
 load_dotenv(".env")
 
 
+import glob
 import os
 import time
+from collections import defaultdict
 
 from tqdm.auto import tqdm
 
@@ -49,3 +51,17 @@ for lib in libraries:
                 f.write("Incorrect")
 
         time.sleep(5)
+
+results = defaultdict(lambda: [0, 0])
+for file in glob.glob("generated_code/initial/zero-shot/*.txt"):
+    lib = os.path.basename(file).split("_")[0]
+    is_correct = open(file, "r").read().strip() == "Correct"
+    if is_correct:
+        results[lib][0] += 1
+        results[lib][1] += 1
+    else:
+        results[lib][1] += 1
+
+for lib, (correct, total) in results.items():
+    accuracy = correct / total if total else 0
+    print(f"{lib}: {accuracy * 100:.2f}%")
