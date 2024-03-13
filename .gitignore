@@ -1,5 +1,6 @@
-# DS-1000 dataset
+# data
 src/dataset/ds1000_data
+*.7z
 
 # venv
 .venv
