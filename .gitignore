@@ -1,4 +1,6 @@
 # data
+*.json
+*.xml
 src/dataset/ds1000_data
 *.7z
 
@@ -16,3 +18,6 @@ src/dataset/generated_code
 
 # environment file
 .env
+
+# log
+*.log
