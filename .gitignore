@@ -1,4 +1,5 @@
 # data
+*.csv
 *.json
 *.xml
 src/dataset/ds1000_data

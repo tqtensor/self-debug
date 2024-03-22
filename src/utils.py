@@ -73,7 +73,3 @@ def setup_test_env():
     _subprocess_run([".venv/bin/pip", "install", "-U", "pip"])
     _subprocess_run([".venv/bin/pip", "install", "-U", "poetry"])
     _subprocess_run([".venv/bin/python", "-m", "poetry", "install", "--no-root"])
-
-
-if __name__ == "__main__":
-    setup_test_env()
