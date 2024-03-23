@@ -1,6 +1,3 @@
-# Code module for the utility functions
-
-
 import json
 import os
 import platform

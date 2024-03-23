@@ -234,41 +234,16 @@ class StackOverflowDataset:
             get_comments(file_name="Comments.xml", post_ids=post_ids)
 
         # Build index of Posts and Comments
-        posts_metadata = pd.read_csv("stack_overflow/posts_metadata.csv")[
-            ["id", "tags"]
-        ].rename(columns={"id": "post_id"})
-        comments_metadata = pd.read_csv("stack_overflow/comments_metadata.csv").rename(
-            columns={"id": "comment_id"}
-        )
-        self.index = pd.merge(
-            posts_metadata, comments_metadata, on="post_id", how="inner"
-        ).sort_values(by=["post_id", "comment_id", "created_at"])
-
-    def retrieve(self, tags: List[str] = [""], k: int = 10) -> dict:
-        filtered_index = self.index[self.index["tags"].str.contains("|".join(tags))]
-        filtered_post_ids = filtered_index["post_id"].unique()[:k]
-
-        result = {}
-        for post_id in filtered_post_ids:
-            post = json.load(
-                open(
-                    os.path.join("stack_overflow", "posts", str(post_id) + ".json"), "r"
-                )
-            ).get("Body", "")
-            comments = []
-            for comment_id in filtered_index[filtered_index["post_id"] == post_id][
-                "comment_id"
-            ]:
-                comment = json.load(
-                    open(
-                        os.path.join(
-                            "stack_overflow",
-                            "comments",
-                            str(comment_id) + "_" + str(post_id) + ".json",
-                        ),
-                        "r",
-                    )
-                ).get("Text", "")
-                comments.append(comment)
-            result[post_id] = {"post": post, "comments": comments}
-        return result
+        if not os.path.exists("stack_overflow/index.csv"):
+            posts_metadata = pd.read_csv("stack_overflow/posts_metadata.csv")[
+                ["id", "tags"]
+            ].rename(columns={"id": "post_id"})
+            comments_metadata = pd.read_csv(
+                "stack_overflow/comments_metadata.csv"
+            ).rename(columns={"id": "comment_id"})
+            self.index = pd.merge(
+                posts_metadata, comments_metadata, on="post_id", how="inner"
+            ).sort_values(by=["post_id", "comment_id", "created_at"])
+            self.index.to_csv("stack_overflow/index.csv", index=False)
+        else:
+            self.index = pd.read_csv("stack_overflow/index.csv")

@@ -1,9 +1,10 @@
 # data
+*.7z
 *.csv
 *.json
 *.xml
+*.txt
 src/dataset/ds1000_data
-*.7z
 
 # venv
 .venv

@@ -1,6 +1,3 @@
-# Code module for the initial generator which creates the initial attempt
-
-
 import re
 
 from langchain_core.prompts import ChatPromptTemplate
