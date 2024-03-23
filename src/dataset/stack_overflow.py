@@ -6,11 +6,33 @@ import sys
 import xml.etree.ElementTree as ET
 from typing import List
 
+import chromadb
 import pandas as pd
 import psutil
+from chromadb.config import Settings
+from langchain_community.embeddings import AzureOpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_core.documents.base import Document
 from minio import Minio
 
 from src.dataset.minio_helper import Progress
+
+# Chroma vector store
+client = chromadb.Client(
+    settings=Settings(
+        chroma_api_impl="rest",
+        chroma_server_host="0.0.0.0",
+        chroma_server_http_port=8000,
+    )
+)
+vector_store = Chroma(
+    client=client,
+    collection_name="stack_overflow",
+    embedding_function=AzureOpenAIEmbeddings(
+        deployment="text-embedding-ada", max_retries=30
+    ),
+)
+
 
 # Create a logger
 logging.basicConfig(
@@ -247,3 +269,7 @@ class StackOverflowDataset:
             self.index.to_csv("stack_overflow/index.csv", index=False)
         else:
             self.index = pd.read_csv("stack_overflow/index.csv")
+
+    @staticmethod
+    def retrieve(query: str, k: int) -> List[Document]:
+        return vector_store.similarity_search(query=query, k=k)

@@ -7,6 +7,7 @@ import tarfile
 
 import pyzstd
 import requests
+from xxhash import xxh64
 
 
 def syntax_check(code: str) -> dict:
@@ -70,3 +71,7 @@ def setup_test_env():
     _subprocess_run([".venv/bin/pip", "install", "-U", "pip"])
     _subprocess_run([".venv/bin/pip", "install", "-U", "poetry"])
     _subprocess_run([".venv/bin/python", "-m", "poetry", "install", "--no-root"])
+
+
+def hashes(doc: str) -> str:
+    return xxh64(doc).hexdigest()

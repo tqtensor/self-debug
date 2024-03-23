@@ -25,10 +25,24 @@ LIBRARIES = [
 
 if __name__ == "__main__":
     # Prepare datasets
+    problem = """
+Problem:
+How do I get the dimensions of an array? For instance, this is (2, 2):
+a = np.array([[1,2],[3,4]])
+
+A:
+<code>
+import numpy as np
+a = np.array([[1,2],[3,4]])
+</code>
+result = ... # put solution in this variable
+BEGIN SOLUTION
+<code>
+"""
     stack_overflow_dataset = Dataset(
         dataset="stack_overflow", kwargs={"download": False}
     ).dataset
-    print(stack_overflow_dataset.retrieve(tags=["numpy"], k=3))
+    print(stack_overflow_dataset.retrieve(query=problem, k=2))
 
     problem_dataset = Dataset(dataset="ds-1000", kwargs=None).dataset
 
