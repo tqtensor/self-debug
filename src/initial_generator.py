@@ -1,7 +1,9 @@
 import re
+from typing import Optional
 
 from langchain_core.prompts import ChatPromptTemplate
 
+from src.dataset.stack_overflow import StackOverflowDataset
 from src.llm import LLM
 from src.utils import syntax_check
 
@@ -11,7 +13,9 @@ class InitialGenerator:
         self.strategy = strategy
         self.llm = LLM(model=model, config={"temperature": 0, "max_retries": 10}).llm
 
-    def generate(self, problem: str) -> str:
+    def generate(
+        self, problem: str, stack_overflow: Optional[StackOverflowDataset]
+    ) -> str:
         if self.strategy == "zero-shot":
             # Zero-shot strategy
             system = "You are a helpful Self-debugging assistant that can understand and solve programming problems."
@@ -58,7 +62,88 @@ class InitialGenerator:
             else:
                 # TODO: Handle this case
                 return ""
-        elif self.strategy == "plan-and-solve":
-            return self._empty(problem)
+        elif self.strategy == "cot":
+            # Retrieve relevant Stack Overflow post
+            post = stack_overflow.retrieve(query=problem, k=1)
+
+            # CoT generation
+            system = "You are a helpful Chain-of-Thought generator that can understand the reasoning behind programming problems."
+            human = """
+            Given the problem description with the code, and a Stack Overflow post, you need to learn from the comments to generate step-by-step suggestion that help another agent to solve the problem.
+
+            The give problem is: {problem_description}.
+
+            The Stack Overflow post with supportive comments is: {post}.
+
+            Please generate a series of suggestions that help another agent to solve the problem step-by-step.
+            Suggestion 1: [...], then
+            Suggestion 2: [...], then
+            Suggestion 3: [...], then
+            Final suggestion: [...]
+            ...
+            ```"""
+            prompt = ChatPromptTemplate.from_messages(
+                [("system", system), ("human", human)]
+            )
+
+            # Invoke the LLM
+            cot_suggestions = self.llm.invoke(
+                prompt.invoke(
+                    {
+                        "problem_description": problem,
+                        "post": post,
+                    }
+                ),
+            ).content
+
+            # CoT strategy
+            system = "You are a helpful Self-debugging assistant that can understand and solve programming problems."
+            human = """
+            Given the problem description with the code, you need to fullfill the task by writing the code that solves the problem.
+
+            If the problem asks to return the result via a variable, you need to write the code that assigns the result to the variable.
+            For example:
+                x = ... # put solution in this variable
+
+            The problem is: {problem_description}.
+
+            Please solve the problem by defining a function f that takes the input and returns the output.
+            Then identify the variable name that the question asks you to return the result via. It could be x, or result.
+            Then assign the result of calling the function to that variable.
+            For example:
+            ```python
+            def f(...):
+                # your solution here
+            identified_variable = f(...)
+
+            To support you in solving the problem, here are the suggestions from the Stack Overflow post:
+            {cot_suggestions}
+            ```"""
+            prompt = ChatPromptTemplate.from_messages(
+                [("system", system), ("human", human)]
+            )
+
+            # Invoke the LLM
+            answer = self.llm.invoke(
+                prompt.invoke(
+                    {
+                        "problem_description": problem,
+                        "cot_suggestions": cot_suggestions,
+                    }
+                ),
+            ).content
+
+            # Extract code from the answer
+            match = re.search(r"```python\n(.*?)\n```", answer, re.DOTALL)
+            if match:
+                code = match.group(1)
+                if syntax_check(code)["status"] == "success":
+                    return code
+                else:
+                    # TODO: Handle this case
+                    return ""
+            else:
+                # TODO: Handle this case
+                return ""
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")

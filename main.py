@@ -1,3 +1,10 @@
+# Reset the environment variables
+import os
+
+for key in list(os.environ.keys()):
+    if ("AZURE" in key) or ("OPENAI" in key):
+        del os.environ[key]
+
 from dotenv import load_dotenv
 
 load_dotenv(".env")
@@ -25,30 +32,16 @@ LIBRARIES = [
 
 if __name__ == "__main__":
     # Prepare datasets
-    problem = """
-Problem:
-How do I get the dimensions of an array? For instance, this is (2, 2):
-a = np.array([[1,2],[3,4]])
-
-A:
-<code>
-import numpy as np
-a = np.array([[1,2],[3,4]])
-</code>
-result = ... # put solution in this variable
-BEGIN SOLUTION
-<code>
-"""
     stack_overflow_dataset = Dataset(
         dataset="stack_overflow", kwargs={"download": False}
     ).dataset
-    print(stack_overflow_dataset.retrieve(query=problem, k=2))
 
     problem_dataset = Dataset(dataset="ds-1000", kwargs=None).dataset
 
     # Create directories
-    if not os.path.exists("generated_code/initial/zero-shot"):
-        os.makedirs("generated_code/initial/zero-shot")
+    strategy = "cot"
+    if not os.path.exists(f"generated_code/initial/{strategy}"):
+        os.makedirs(f"generated_code/initial/{strategy}")
 
     # Run initial generator
     for lib in LIBRARIES:
@@ -58,19 +51,19 @@ BEGIN SOLUTION
             challenge = problem_dataset[lib][i]
             problem = challenge["prompt"]
 
-            initial_generator = InitialGenerator(
-                model="gpt35-turbo", strategy="zero-shot"
-            )
+            initial_generator = InitialGenerator(model="gpt35-turbo", strategy=strategy)
 
-            generated_code = initial_generator.generate(problem=problem)
+            generated_code = initial_generator.generate(
+                problem=problem, stack_overflow=stack_overflow_dataset
+            )
             with open(
-                f"generated_code/initial/zero-shot/{lib}_{str(i).zfill(3)}.py", "w"
+                f"generated_code/initial/{strategy}/{lib}_{str(i).zfill(3)}.py", "w"
             ) as f:
                 f.write(generated_code)
 
             is_correct = challenge.test(generated_code)
             with open(
-                f"generated_code/initial/zero-shot/{lib}_{str(i).zfill(3)}.txt", "w"
+                f"generated_code/initial/{strategy}/{lib}_{str(i).zfill(3)}.txt", "w"
             ) as f:
                 if is_correct:
                     f.write("Correct")
@@ -80,7 +73,7 @@ BEGIN SOLUTION
             time.sleep(5)
 
     results = defaultdict(lambda: [0, 0])
-    for file in glob.glob("generated_code/initial/zero-shot/*.txt"):
+    for file in glob.glob(f"generated_code/initial/{strategy}/*.txt"):
         lib = os.path.basename(file).split("_")[0]
         is_correct = open(file, "r").read().strip() == "Correct"
         if is_correct:

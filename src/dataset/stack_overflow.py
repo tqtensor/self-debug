@@ -29,7 +29,12 @@ vector_store = Chroma(
     client=client,
     collection_name="stack_overflow",
     embedding_function=AzureOpenAIEmbeddings(
-        deployment="text-embedding-ada", max_retries=30
+        openai_api_type="azure",
+        openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        openai_api_version=os.getenv("OPENAI_API_VERSION"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        deployment="text-embedding-ada",
+        max_retries=30,
     ),
 )
 
