@@ -17,8 +17,8 @@ from collections import defaultdict
 
 from tqdm.auto import tqdm
 
+from src.code_generator import CodeGenerator
 from src.dataset import Dataset
-from src.initial_generator import InitialGenerator
 
 LIBRARIES = [
     "Pandas",
@@ -30,6 +30,8 @@ LIBRARIES = [
     "Matplotlib",
 ]
 
+MAX_SELF_CORRECTION_ATTEMPTS = 5
+
 if __name__ == "__main__":
     # Prepare datasets
     stack_overflow_dataset = Dataset(
@@ -39,9 +41,11 @@ if __name__ == "__main__":
     problem_dataset = Dataset(dataset="ds-1000", kwargs=None).dataset
 
     # Create directories
-    strategy = "cot"
+    strategy = "v3"  # initial code generator with CoT then correcting code generator with zero-shot
     if not os.path.exists(f"generated_code/initial/{strategy}"):
         os.makedirs(f"generated_code/initial/{strategy}")
+    if not os.path.exists(f"generated_code/correcting/{strategy}"):
+        os.makedirs(f"generated_code/correcting/{strategy}")
 
     # Run initial generator
     for lib in LIBRARIES:
@@ -51,21 +55,50 @@ if __name__ == "__main__":
             challenge = problem_dataset[lib][i]
             problem = challenge["prompt"]
 
-            initial_generator = InitialGenerator(model="gpt35-turbo", strategy=strategy)
+            initial_generator = CodeGenerator(model="gpt35-turbo", strategy="cot")
 
             generated_code = initial_generator.generate(
-                problem=problem, stack_overflow=stack_overflow_dataset
+                problem=problem, stack_overflow=stack_overflow_dataset, feedback=None
             )
+            dataset_dir = os.getcwd()
             with open(
                 f"generated_code/initial/{strategy}/{lib}_{str(i).zfill(3)}.py", "w"
             ) as f:
                 f.write(generated_code)
 
             is_correct = challenge.test(generated_code)
+
+            # Handle self-correction
+            attempt = 0
+            while (attempt < MAX_SELF_CORRECTION_ATTEMPTS) and (is_correct != True):
+                if isinstance(is_correct, tuple):
+                    correcting_generator = CodeGenerator(
+                        model="gpt35-turbo", strategy="zero-shot"
+                    )
+
+                    generated_code = correcting_generator.generate(
+                        problem=problem,
+                        stack_overflow=stack_overflow_dataset,
+                        feedback=is_correct,
+                    )
+                    os.chdir(dataset_dir)
+                    with open(
+                        f"generated_code/correcting/{strategy}/{lib}_{str(i).zfill(3)}.py",
+                        "w",
+                    ) as f:
+                        f.write(generated_code)
+
+                    is_correct = challenge.test(generated_code)
+
+                    attempt += 1
+                elif isinstance(is_correct, bool):
+                    pass
+
+            os.chdir(dataset_dir)
             with open(
-                f"generated_code/initial/{strategy}/{lib}_{str(i).zfill(3)}.txt", "w"
+                f"generated_code/correcting/{strategy}/{lib}_{str(i).zfill(3)}.txt", "w"
             ) as f:
-                if is_correct:
+                if isinstance(is_correct, bool) and (is_correct == True):
                     f.write("Correct")
                 else:
                     f.write("Incorrect")
@@ -73,7 +106,7 @@ if __name__ == "__main__":
             time.sleep(5)
 
     results = defaultdict(lambda: [0, 0])
-    for file in glob.glob(f"generated_code/initial/{strategy}/*.txt"):
+    for file in glob.glob(f"generated_code/correcting/{strategy}/*.txt"):
         lib = os.path.basename(file).split("_")[0]
         is_correct = open(file, "r").read().strip() == "Correct"
         if is_correct:

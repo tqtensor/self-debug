@@ -243,8 +243,7 @@ class DS1000Problem:
                     timeout=time_limit
                 )  # 0 if there is no error
                 if exit_code != 0:
-                    print(stderr.decode("utf-8"))
-                    print(stdout.decode("utf-8"))
+                    return program, stderr.decode("utf-8")
                 execution_status.append(exit_code)
 
             # check if the generated code can run without error
@@ -284,6 +283,11 @@ class DS1000Problem:
                         expected_result = self.data["ans"][i - 1]
                         try:
                             pass_flag = test_module.test(result, expected_result) == 1
+                            if not pass_flag:
+                                return (
+                                    program,
+                                    f"Executed: \n{result}\nExpected: \n{expected_result}",
+                                )
                         except:
                             pass_flag = False
                     except:

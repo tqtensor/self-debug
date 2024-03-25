@@ -13,6 +13,7 @@ class LLM:
                 deployment_name="gpt-35",
                 temperature=config.get("temperature", 0.5),
                 max_retries=config.get("max_retries", 3),
+                verbose=config.get("verbose", False),
             )
         else:
             raise ValueError(f"Unknown model: {model}")

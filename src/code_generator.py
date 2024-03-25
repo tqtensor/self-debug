@@ -8,13 +8,18 @@ from src.llm import LLM
 from src.utils import syntax_check
 
 
-class InitialGenerator:
+class CodeGenerator:
     def __init__(self, model: str, strategy: str):
         self.strategy = strategy
-        self.llm = LLM(model=model, config={"temperature": 0, "max_retries": 10}).llm
+        self.llm = LLM(
+            model=model, config={"temperature": 0, "max_retries": 10, "verbose": True}
+        ).llm
 
     def generate(
-        self, problem: str, stack_overflow: Optional[StackOverflowDataset]
+        self,
+        problem: str,
+        stack_overflow: Optional[StackOverflowDataset],
+        feedback: Optional[str],
     ) -> str:
         if self.strategy == "zero-shot":
             # Zero-shot strategy
@@ -27,7 +32,22 @@ class InitialGenerator:
                 x = ... # put solution in this variable
 
             The problem is: {problem_description}.
+            """
 
+            if feedback:
+                if "traceback" in feedback[1].lower():
+                    human += "\n\nIn the previous attempt, you generated the following code inside the block ###BEGIN SOLUTION and ###END SOLUTION:\n```\n{generated_code}\n```"
+                    human += "\n\nHowever, the code has an error. The error message is:\n```\n{feedback}\n```"
+                    human += (
+                        "Please analyze the error message and fix the code accordingly."
+                    )
+                elif ("executed" in feedback[1].lower()) and (
+                    "expected" in feedback[1].lower()
+                ):
+                    human += "\n\nIn the previous attempt, you generated the following code inside the block ###BEGIN SOLUTION and ###END SOLUTION:\n```\n{generated_code}\n```"
+                    human += "\n\nThe code executed successfully but failed the test case. Please analyze the difference between executed result versus the test expectation to fix the code accordingly."
+            else:
+                human += """
             Please solve the problem by defining a function f that takes the input and returns the output.
             Then identify the variable name that the question asks you to return the result via. It could be x, or result.
             Then assign the result of calling the function to that variable.
@@ -37,18 +57,30 @@ class InitialGenerator:
                 # your solution here
             identified_variable = f(...)
             ```"""
+
             prompt = ChatPromptTemplate.from_messages(
                 [("system", system), ("human", human)]
             )
 
             # Invoke the LLM
-            answer = self.llm.invoke(
-                prompt.invoke(
-                    {
-                        "problem_description": problem,
-                    }
-                ),
-            ).content
+            if feedback:
+                answer = self.llm.invoke(
+                    prompt.invoke(
+                        {
+                            "problem_description": problem,
+                            "generated_code": feedback[0],
+                            "feedback": feedback[1],
+                        }
+                    ),
+                ).content
+            else:
+                answer = self.llm.invoke(
+                    prompt.invoke(
+                        {
+                            "problem_description": problem,
+                        }
+                    ),
+                ).content
 
             # Extract code from the answer
             match = re.search(r"```python\n(.*?)\n```", answer, re.DOTALL)
