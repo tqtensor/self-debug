@@ -1,6 +1,7 @@
 import re
 from typing import Optional
 
+import openai
 from langchain_core.prompts import ChatPromptTemplate
 
 from src.dataset.stack_overflow import StackOverflowDataset
@@ -64,15 +65,18 @@ class CodeGenerator:
 
             # Invoke the LLM
             if feedback:
-                answer = self.llm.invoke(
-                    prompt.invoke(
-                        {
-                            "problem_description": problem,
-                            "generated_code": feedback[0],
-                            "feedback": feedback[1],
-                        }
-                    ),
-                ).content
+                try:
+                    answer = self.llm.invoke(
+                        prompt.invoke(
+                            {
+                                "problem_description": problem,
+                                "generated_code": feedback[0],
+                                "feedback": feedback[1],
+                            }
+                        ),
+                    ).content
+                except openai.BadRequestError:
+                    answer = "assert True # I am sorry, I am unable to generate the code. Please try again later."
             else:
                 answer = self.llm.invoke(
                     prompt.invoke(

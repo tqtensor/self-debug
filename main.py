@@ -47,11 +47,16 @@ if __name__ == "__main__":
     if not os.path.exists(f"generated_code/correcting/{strategy}"):
         os.makedirs(f"generated_code/correcting/{strategy}")
 
-    # Run initial generator
     for lib in LIBRARIES:
         for i in tqdm(
             range(len(problem_dataset[lib])), desc=f"Solving problem for {lib}"
         ):
+            # Skip solved problems
+            if os.path.exists(
+                f"generated_code/correcting/{strategy}/{lib}_{str(i).zfill(3)}.txt"
+            ):
+                continue
+
             challenge = problem_dataset[lib][i]
             problem = challenge["prompt"]
 
@@ -92,7 +97,7 @@ if __name__ == "__main__":
 
                     attempt += 1
                 elif isinstance(is_correct, bool):
-                    pass
+                    break
 
             os.chdir(dataset_dir)
             with open(
