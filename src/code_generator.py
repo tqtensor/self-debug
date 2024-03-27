@@ -19,45 +19,60 @@ class CodeGenerator:
     def generate(
         self,
         problem: str,
+        code_context: str,
         stack_overflow: Optional[StackOverflowDataset],
         feedback: Optional[str],
     ) -> str:
         if self.strategy == "zero-shot":
             # Zero-shot strategy
-            system = "You are a helpful Self-debugging assistant that can understand and solve programming problems."
+            system = "You are a helpful Self-debugging assistant that can understand and solve programming problems. You have the ability to analyze and execute code, providing feedback and suggestions to help users debug and improve their code. By leveraging your knowledge and expertise, you can assist users in solving complex programming problems and guide them towards writing correct and efficient code. Your goal is to empower users to become better programmers by providing them with valuable insights and assistance throughout their coding journey."
             human = """
-            Given the problem description with the code, you need to fullfill the task by writing the code that solves the problem.
-
-            If the problem asks to return the result via a variable, you need to write the code that assigns the result to the variable.
-            For example:
-                x = ... # put solution in this variable
+            Given the problem description with the code, you need to fulfill the task by writing the code that solves the problem.
 
             The problem is: {problem_description}.
+
+            Your solution will be evaluated by replacing the code inside the block
+            ```
+            # SOLUTION START
+            [insert]
+            # SOLUTION END
+            ```
+            with your code as follows:
+            ```python
+            {code_context}
+            ```
+
+            Make sure your code is correct and complete to solve the problem.
             """
 
             if feedback:
                 if "traceback" in feedback[1].lower():
-                    human += "\n\nIn the previous attempt, you generated the following code inside the block ###BEGIN SOLUTION and ###END SOLUTION:\n```\n{generated_code}\n```"
-                    human += "\n\nHowever, the code has an error. The error message is:\n```\n{feedback}\n```"
-                    human += (
-                        "Please analyze the error message and fix the code accordingly."
-                    )
+                    human += """
+                    In the previous attempt, you generated the following code inside the block ###BEGIN SOLUTION and ###END SOLUTION:
+                    ```
+                    {generated_code}
+                    ```
+                    However, the code has an error. The error message is:
+                    ```
+                    {feedback}
+                    ```
+                    Please analyze the error message and fix the code accordingly.
+                    """
                 elif ("executed" in feedback[1].lower()) and (
                     "expected" in feedback[1].lower()
                 ):
-                    human += "\n\nIn the previous attempt, you generated the following code inside the block ###BEGIN SOLUTION and ###END SOLUTION:\n```\n{generated_code}\n```"
-                    human += "\n\nThe code executed successfully but failed the test case. Please analyze the difference between executed result versus the test expectation to fix the code accordingly."
+                    human += """
+                    In the previous attempt, you generated the following code inside the block ###BEGIN SOLUTION and ###END SOLUTION:
+                    ```
+                    {generated_code}
+                    ```
+                    The code executed successfully but failed the test case. Please analyze the difference between the executed result and the expected result to fix the code accordingly. The deviation from the expected result is:
+                    ```
+                    {feedback}
+                    ```
+                    """
             else:
-                human += """
-            Please solve the problem by defining a function f that takes the input and returns the output.
-            Then identify the variable name that the question asks you to return the result via. It could be x, or result.
-            Then assign the result of calling the function to that variable.
-            For example:
-            ```python
-            def f(...):
-                # your solution here
-            identified_variable = f(...)
-            ```"""
+                pass
 
             prompt = ChatPromptTemplate.from_messages(
                 [("system", system), ("human", human)]
@@ -70,6 +85,7 @@ class CodeGenerator:
                         prompt.invoke(
                             {
                                 "problem_description": problem,
+                                "code_context": code_context,
                                 "generated_code": feedback[0],
                                 "feedback": feedback[1],
                             }
@@ -82,6 +98,7 @@ class CodeGenerator:
                     prompt.invoke(
                         {
                             "problem_description": problem,
+                            "code_context": code_context,
                         }
                     ),
                 ).content
@@ -103,21 +120,21 @@ class CodeGenerator:
             post = stack_overflow.retrieve(query=problem, k=1)
 
             # CoT generation
-            system = "You are a helpful Chain-of-Thought generator that can understand the reasoning behind programming problems."
+            system = "You are a helpful Chain-of-Thought generator that can understand the reasoning behind programming problems and provide step-by-step guidance to solve them."
             human = """
-            Given the problem description with the code, and a Stack Overflow post, you need to learn from the comments to generate step-by-step suggestion that help another agent to solve the problem.
+            Given the problem description with the code, and a Stack Overflow post, you need to learn from the comments to generate step-by-step suggestions that help another agent to solve the problem.
 
-            The give problem is: {problem_description}.
+            The given problem is: {problem_description}.
 
             The Stack Overflow post with supportive comments is: {post}.
 
             Please generate a series of suggestions that help another agent to solve the problem step-by-step.
-            Suggestion 1: [...], then
-            Suggestion 2: [...], then
-            Suggestion 3: [...], then
-            Final suggestion: [...]
-            ...
-            ```"""
+            Here are some suggestions:
+            - Suggestion 1: [...]
+            - Suggestion 2: [...]
+            - Suggestion 3: [...]
+            - Final suggestion: [...]
+            """
             prompt = ChatPromptTemplate.from_messages(
                 [("system", system), ("human", human)]
             )
@@ -133,28 +150,28 @@ class CodeGenerator:
             ).content
 
             # CoT strategy
-            system = "You are a helpful Self-debugging assistant that can understand and solve programming problems."
+            system = "You are a helpful Self-debugging assistant that can understand and solve programming problems. You have the ability to analyze and execute code, providing feedback and suggestions to help users debug and improve their code. By leveraging your knowledge and expertise, you can assist users in solving complex programming problems and guide them towards writing correct and efficient code. Your goal is to empower users to become better programmers by providing them with valuable insights and assistance throughout their coding journey."
             human = """
-            Given the problem description with the code, you need to fullfill the task by writing the code that solves the problem.
-
-            If the problem asks to return the result via a variable, you need to write the code that assigns the result to the variable.
-            For example:
-                x = ... # put solution in this variable
+            Given the problem description with the code, you need to fulfill the task by writing the code that solves the problem.
 
             The problem is: {problem_description}.
 
-            Please solve the problem by defining a function f that takes the input and returns the output.
-            Then identify the variable name that the question asks you to return the result via. It could be x, or result.
-            Then assign the result of calling the function to that variable.
-            For example:
+            Your solution will be evaluated by replacing the code inside the block
+            ```
+            # SOLUTION START
+            [insert]
+            # SOLUTION END
+            ```
+            with your code as follows:
             ```python
-            def f(...):
-                # your solution here
-            identified_variable = f(...)
+            {code_context}
+            ```
 
-            To support you in solving the problem, here are the suggestions from the Stack Overflow post:
+            To support you in solving the problem, here are the suggestions from the Stack Overflow post comments:
             {cot_suggestions}
-            ```"""
+
+            Make sure your code is correct and complete to solve the problem.
+            """
             prompt = ChatPromptTemplate.from_messages(
                 [("system", system), ("human", human)]
             )
@@ -164,6 +181,7 @@ class CodeGenerator:
                 prompt.invoke(
                     {
                         "problem_description": problem,
+                        "code_context": code_context,
                         "cot_suggestions": cot_suggestions,
                     }
                 ),

@@ -41,7 +41,7 @@ if __name__ == "__main__":
     problem_dataset = Dataset(dataset="ds-1000", kwargs=None).dataset
 
     # Create directories
-    strategy = "v3"  # initial code generator with CoT then correcting code generator with zero-shot
+    strategy = "v4"  # improved prompt following `SELFEVOLVE` paper
     if not os.path.exists(f"generated_code/initial/{strategy}"):
         os.makedirs(f"generated_code/initial/{strategy}")
     if not os.path.exists(f"generated_code/correcting/{strategy}"):
@@ -59,11 +59,15 @@ if __name__ == "__main__":
 
             challenge = problem_dataset[lib][i]
             problem = challenge["prompt"]
+            code_context = challenge["code_context"]
 
             initial_generator = CodeGenerator(model="gpt35-turbo", strategy="cot")
 
             generated_code = initial_generator.generate(
-                problem=problem, stack_overflow=stack_overflow_dataset, feedback=None
+                problem=problem,
+                code_context=code_context,
+                stack_overflow=stack_overflow_dataset,
+                feedback=None,
             )
             dataset_dir = os.getcwd()
             with open(
@@ -83,6 +87,7 @@ if __name__ == "__main__":
 
                     generated_code = correcting_generator.generate(
                         problem=problem,
+                        code_context=code_context,
                         stack_overflow=stack_overflow_dataset,
                         feedback=is_correct,
                     )
